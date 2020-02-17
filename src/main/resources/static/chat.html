@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>群聊</title>
+    <script src="/webjars/jquery/3.4.1/jquery.min.js"></script>
+    <script src="webjars/sockjs-client/1.1.2/sockjs.min.js"></script>
+    <script src="webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <table>
+        <tr>
+            <td>请输入用户名</td>
+            <td><input type="text" id="name"></td>
+        </tr>
+        <tr>
+            <td><input type="button" id="connent" value="连接服务器"></td>
+            <td><input type="button" id="disconnent" disabled="disabled" value="断开连接"></td>
+        </tr>
+    </table>
+
+<div id="chat" style="display: none">
+
+    <table>
+        <tr>
+            <td>请输入聊天内容</td>
+            <td><input type="text" id="content"></td>
+            <td><input type="button" id="send" value="发送"></td>
+        </tr>
+    </table>
+    <div id="conversation">
+        <div  id="username"></div>
+    </div>
+
+</div>
+
+<script>
+
+        $("#connent").click(function () {
+            connect();
+        })
+        $("#disconnent").click(function () {
+            if(stompClient!=null){
+                stompClient.disconnect();
+            }
+            setConnected(false);
+        })
+
+        $("#send").click(function (){
+            alert(JSON.stringify({'name':$("#name").val(),'content':$("#content").val()}));
+            stompClient.send('/app/hello',{},JSON.stringify({'name':$("#name").val(),'content':$("#content").val()}));
+        })
+
+    var username = null;
+    var stopClient = null;
+    function connect() {
+        // 判断有没有输入用户名
+        if($("#name").val()=="" || $("#name").val()==null ){
+            return;
+        }
+        // 开始与registerStompEndpoints方法建立连接,
+        var socket = new SockJS('/chat');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({},function (success) {
+          setConnected(true);
+          // 连接上之后定义一个接收广播的地址
+          stompClient.subscribe('/topic/greetings',function (msg) {
+              // 把服务端返回的对象放在了body里边
+              showGreeting(JSON.parse(msg.body));
+              username = JSON.parse(msg.body);
+              showUsername(username);
+            })
+        })
+    }
+    function showUsername(username) {
+        $("#username").empty();
+        $("#username").append('<span style="color: green">'+'欢迎'+username.name+'加入群聊'+'</span>');
+
+    }
+    function showGreeting(msg) {
+         $("#conversation").append('<div>'+'<span style="color: red">'+msg.name+'</span>'+':'+msg.content+'</div>');
+
+    }
+    function setConnected(flag) {
+        $("#connent").prop("disabled",flag);
+        $("#disconnent").prop("disabled",!flag);
+        if(flag){
+            $("#chat").show();
+        }else{
+            $("#chat").hide();
+        }
+    }
+</script>
+</body>
+</html>
